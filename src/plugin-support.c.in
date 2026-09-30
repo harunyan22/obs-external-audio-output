@@ -1,0 +1,81 @@
+/*
+Plugin Name
+Copyright (C) 2026 minimamu
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>
+*/
+
+#include <plugin-support.h>
+
+#include <windows.h>
+
+const char *PLUGIN_NAME = "@CMAKE_PROJECT_NAME@";
+const char *PLUGIN_VERSION = "@CMAKE_PROJECT_VERSION@";
+
+// Slice 5: 既定は最も詳細なレベルまで許可する(OutputInstance が config.json/Advanced 設定の
+// log_level を読み込むまでは何も抑制しない。既存 Slice の挙動を変えないための安全側デフォルト)。
+//
+// C11 <stdatomic.h> は使わない: MSVC(このプロジェクトの唯一のターゲットツールチェーン)は
+// /experimental:c11atomics 相当のフラグなしでは stdatomic.h を受け付けない(実測:
+// vcruntime_c11_stdatomic.h の #error "C atomic support is not enabled")。この閾値は複数スレッド
+// (Qt UI スレッドが書き手、任意のスレッドが obs_log() 経由で読み手になり得る)から触られるため、
+// レビュー指摘 L-10: plain int + volatile ではコンパイラ/CPU の並べ替えに対する保証が無く「ヒント」
+// でしかない。<windows.h> の InterlockedExchange/InterlockedCompareExchange(いずれも完全な
+// メモリバリアを伴う、MSVC ランタイムが確実に提供する)を使い、LONG 型 + Interlocked 系関数で
+// 読み書きする(RT スレッド(callback/render thread)からは触らないため、頻度・RT 制約の点では
+// 従来どおり問題ない)。
+static volatile LONG g_log_level_threshold = 1000000;
+
+void obs_log_set_level_threshold(int log_level)
+{
+	InterlockedExchange(&g_log_level_threshold, (LONG)log_level);
+}
+
+// obs_log()/obs_log_always() 共通の整形・出力処理(閾値チェックは呼び出し元がそれぞれ行う)。
+static void obs_log_format_and_blog(int log_level, const char *format, va_list args)
+{
+	size_t length = 4 + strlen(PLUGIN_NAME) + strlen(format);
+
+	char *template = malloc(length + 1);
+
+	snprintf(template, length, "[%s] %s", PLUGIN_NAME, format);
+
+	blogva(log_level, template, args);
+
+	free(template);
+}
+
+void obs_log(int log_level, const char *format, ...)
+{
+	// 読みは InterlockedCompareExchange(ptr, 0, 0)(比較対象・置換値とも 0 にすることで実質的な
+	// 「読むだけ」の操作にする。書き込みと同じメモリバリアの強さを持つ)。
+	const LONG threshold = InterlockedCompareExchange(&g_log_level_threshold, 0, 0);
+	if (log_level > threshold)
+		return;
+
+	va_list(args);
+
+	va_start(args, format);
+	obs_log_format_and_blog(log_level, format, args);
+	va_end(args);
+}
+
+void obs_log_always(int log_level, const char *format, ...)
+{
+	va_list(args);
+
+	va_start(args, format);
+	obs_log_format_and_blog(log_level, format, args);
+	va_end(args);
+}

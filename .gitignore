@@ -1,0 +1,13 @@
+# Generated build outputs and downloaded dependencies
+/build_*/
+/.deps/
+/release/
+/CMakeUserPresets.json
+/CMakeCache.txt
+/CMakeFiles/
+/cmake/.CMakeBuildNumber
+/.vs/
+/.vscode/
+*.user
+*.suo
+*.log
