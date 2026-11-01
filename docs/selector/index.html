@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>スマホ配信の構成さがし</title>
+<style>
+:root{--bg:#f4f6f8;--fg:#1b3340;--card:#fff;--line:#dde4ea;--ok:#2e9e7e;--ok-bg:#e9f6f1;--warn:#b7791f;--ng:#b94a48;--muted:#607482;--ico:#2b5a74;--r:12px;--sh:0 1px 2px rgba(20,40,55,.06)}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Yu Gothic UI","Hiragino Sans","Meiryo",sans-serif;line-height:1.7;font-size:14px}
+main{max-width:960px;margin:0 auto;padding:22px 16px 64px}
+/* 見出し */
+.hd{margin:0 0 16px}.hd h1{font-size:22px;line-height:1.4;margin:0 0 4px;letter-spacing:.01em}.hd p{margin:0;color:var(--muted);font-size:13.5px}
+/* カード共通 */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;margin:0 0 12px}
+.card-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}.card-hd h2{font-size:15px;margin:0;display:flex;align-items:center;gap:6px}
+.btn{font:inherit;font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--fg);cursor:pointer}.btn:hover{border-color:var(--fg)}
+/* 条件: マイク / PC / スマホ の 3 列 */
+.filters{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 22px}
+.grp h3{font-size:12px;letter-spacing:.08em;color:var(--muted);margin:0 0 6px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.gg{display:flex;flex-direction:column;gap:10px}
+.f{font-size:13px}.f .fl{display:flex;align-items:center;gap:6px;color:var(--fg);font-weight:700}
+.q{font:inherit;font-size:11px;line-height:1;width:17px;height:17px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer;padding:0;flex:none}
+.opts{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.opt{font:inherit;font-size:12.5px;line-height:1.45;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;cursor:pointer;color:var(--fg)}
+.opt:hover{border-color:var(--fg)}.opt[aria-pressed=true]{background:var(--fg);color:#fff;border-color:var(--fg)}.opt:disabled{opacity:.38;cursor:not-allowed}
+.opt .n{color:var(--muted);font-size:11px;margin-left:3px}.opt[aria-pressed=true] .n{color:#c9dcd6}
+.ohint{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
+/* 用語の吹き出し */
+.t{text-decoration:underline dotted var(--muted);text-underline-offset:3px;cursor:help;outline:none}.t:focus{text-decoration-color:var(--fg)}
+#tt{position:absolute;z-index:50;max-width:300px;background:#1b3340;color:#fff;font-size:12.5px;line-height:1.55;padding:8px 10px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.22);pointer-events:none;display:none}
+#tt::before{content:'';position:absolute;top:-6px;left:var(--ax,16px);border:6px solid transparent;border-top:0;border-bottom-color:#1b3340}
+/* 持っている機材 */
+.owned p.note{margin:0 0 8px;color:var(--muted);font-size:12.5px}
+.dev{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 10px;margin:0 0 6px;background:var(--bg);border-radius:10px}
+.dev input[type=text]{font:inherit;font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;width:160px;background:#fff}
+.dev select{font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.dev label{font-size:12.5px;white-space:nowrap;display:inline-flex;align-items:center;gap:3px}.dev .del{font:inherit;font-size:12px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer;color:var(--muted);margin-left:auto}
+.addrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px}.addrow select,.addrow button{font:inherit;font-size:13px;padding:5px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
+.addrow .count{flex-basis:100%}
+/* 並べ替えと件数 */
+.bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin:4px 0 10px;font-size:13.5px}
+.bar label{display:flex;align-items:center;gap:6px}.bar select{font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.count{color:var(--muted);font-size:13px}
+/* 一覧（行の中はそのまま） */
+details.row{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--ok);border-radius:var(--r);margin:0 0 8px;box-shadow:var(--sh)}
+details.row.maniac{border-left-color:var(--warn)}details.row.bad{border-left-color:var(--ng)}
+details.row>summary{cursor:pointer;padding:8px 12px 6px;list-style:none}details.row>summary::-webkit-details-marker{display:none}
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}.top .no{min-width:2.4em;font-variant-numeric:tabular-nums}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;border:1px solid var(--line);border-radius:999px;padding:0 7px;color:var(--muted);white-space:nowrap}
+.badge svg{width:13px;height:13px}.badge.ok{color:var(--ok);border-color:var(--ok)}.badge.warn{color:var(--warn);border-color:var(--warn)}.badge.ng{color:var(--ng);border-color:var(--ng)}.badge.own{color:#fff;background:var(--ok);border-color:var(--ok)}
+.chain{display:flex;flex-wrap:wrap;align-items:flex-start;gap:2px 0;margin:4px 0 0}.chain.sub{margin-top:0;padding-left:4px;border-left:2px dotted var(--line)}
+.node{display:flex;flex-direction:column;align-items:center;width:74px;text-align:center}
+.node svg{width:30px;height:30px;stroke:var(--ico);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.node.pc svg{stroke:#1b3340}.node.rx svg{stroke:#2e9e7e}.node.phone svg{stroke:#2e9e7e}
+.node .lb{font-size:11px;line-height:1.25;margin-top:2px;color:var(--fg);overflow-wrap:anywhere;max-width:74px}.node .lb small{display:block;color:var(--muted);font-size:10px}
+.node.have .lb{color:var(--ok);font-weight:700}
+.arrow{align-self:center;color:var(--muted);font-size:14px;width:14px;text-align:center;margin-top:-12px}
+.stack{display:flex;flex-direction:column;align-items:center}
+.varrow{display:flex;flex-direction:column;align-items:center;color:var(--muted);font-size:14px;line-height:1;margin:0 0 2px}.varrow small{font-size:9px;line-height:1.2}
+.chain.direct{align-items:flex-end}.chain.direct .arrow{align-self:flex-end;margin:0 0 21px}
+.node.same svg{outline:2px dashed var(--ok);outline-offset:2px;border-radius:6px}.node .sm{display:block;font-size:9px;color:var(--ok)}
+.body{padding:0 14px 12px;border-top:1px solid var(--line)}.flow{font-weight:700;background:var(--bg);border-radius:8px;padding:8px 10px;margin:10px 0;overflow-wrap:anywhere;font-size:13.5px}
+.body h4{margin:10px 0 2px;font-size:14px}.body ul{margin:0;padding-left:20px}.body li{margin:2px 0;font-size:13.5px}.body li.ng{color:var(--ng)}
+.body details.notes{margin:8px 0 0}.body details.notes summary{cursor:pointer;font-size:14px;font-weight:700;list-style:none}.body details.notes summary::before{content:'＋ ';color:var(--muted)}.body details.notes[open] summary::before{content:'－ '}
+.meta{margin:8px 0 0;font-size:12.5px;color:var(--muted)}.meta a{color:var(--ok);font-weight:700}
+.ask{margin:22px 0 0;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13.5px}.ask a{color:var(--ok);font-weight:700}
+.none{color:var(--muted);padding:16px}
+/* Tips */
+.tips h2{font-size:15px;margin:22px 0 8px;color:var(--muted)}
+details.tip{border:1px solid var(--line);border-radius:10px;background:var(--card);margin:0 0 6px}
+details.tip summary{padding:8px 12px;font-size:13.5px;font-weight:700;cursor:pointer;list-style:none}details.tip summary::before{content:'＋ ';color:var(--muted)}details.tip[open] summary::before{content:'－ '}
+details.tip .tb{padding:0 14px 10px;font-size:13.5px}details.tip .tb p{margin:6px 0}details.tip .tb ul{margin:4px 0;padding-left:20px}details.tip .tb li{margin:3px 0}
+footer{margin-top:24px;color:var(--muted);font-size:12px}
+option:disabled{color:#b0bcc5}
+@media(max-width:820px){.filters{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.filters{grid-template-columns:1fr}main{padding:16px 12px 56px}.card{padding:12px 12px}.node{width:58px}.node .lb{font-size:10px;max-width:58px}.node svg{width:24px;height:24px}.arrow{width:11px;font-size:12px}details.row>summary{padding:8px 8px 6px}.dev input[type=text]{width:100%}.dev .del{margin-left:0}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21M8.5 21h7"/></symbol>
+<symbol id="i-mic2" viewBox="0 0 24 24"><rect x="4" y="3" width="5" height="9" rx="2.5"/><rect x="15" y="3" width="5" height="9" rx="2.5"/><path d="M6.5 15v4M17.5 15v4M4 19h5M15 19h5"/><path d="M1.5 10a5 5 0 0 0 10 0M12.5 10a5 5 0 0 0 10 0"/></symbol>
+<symbol id="i-if" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="7" cy="12" r="2.2"/><circle cx="13" cy="12" r="2.2"/><path d="M18 9.5v5M20 9.5v5"/></symbol>
+<symbol id="i-pc" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M1.5 19.5h21M9 16v3.5M15 16v3.5"/></symbol>
+<symbol id="i-jack" viewBox="0 0 24 24"><path d="M12 2.5v5"/><rect x="9.5" y="7.5" width="5" height="4" rx="1"/><path d="M10.5 11.5v3M13.5 11.5v3"/><rect x="8" y="14.5" width="8" height="7" rx="1.5"/></symbol>
+<symbol id="i-usb" viewBox="0 0 24 24"><rect x="7" y="9" width="10" height="12" rx="1.5"/><rect x="9.5" y="3" width="5" height="6" rx="0.8"/><path d="M10.5 5.5h1M12.5 5.5h1"/></symbol>
+<symbol id="i-mon" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="13" rx="1.5"/><path d="M12 17v3.5M7.5 20.5h9"/><path d="M19 13.5v2"/></symbol>
+<symbol id="i-adp" viewBox="0 0 24 24"><rect x="4" y="9" width="12" height="7" rx="2"/><path d="M16 12.5h5.5"/><path d="M7.5 9V6.5M12.5 9V6.5"/><circle cx="7.5" cy="12.5" r="1"/><circle cx="12.5" cy="12.5" r="1"/></symbol>
+<symbol id="i-mix" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M7 7.5v9M12 7.5v9M17 7.5v9"/><rect x="5.5" y="9" width="3" height="2.6" rx=".6" fill="#fff"/><rect x="10.5" y="12" width="3" height="2.6" rx=".6" fill="#fff"/><rect x="15.5" y="8" width="3" height="2.6" rx=".6" fill="#fff"/></symbol>
+<symbol id="i-otg" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="2"/><circle cx="7.5" cy="12.5" r="2"/><path d="M13 10.5h6M13 14.5h6"/><path d="M8 4.5v2.5M16 4.5v2.5"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M10.5 5h3"/><circle cx="12" cy="18" r=".9"/></symbol>
+<symbol id="i-bt" viewBox="0 0 24 24"><path d="M7 7.5l10 8-5 4V4.5l5 4-10 8"/></symbol>
+<symbol id="i-spk" viewBox="0 0 24 24"><path d="M4 9.5h4l5-4v13l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+<symbol id="i-st" viewBox="0 0 24 24"><circle cx="8" cy="12" r="4"/><circle cx="16" cy="12" r="4"/></symbol>
+<symbol id="i-mono" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/></symbol>
+<symbol id="i-bat" viewBox="0 0 24 24"><rect x="3" y="7" width="16" height="10" rx="2"/><path d="M19 10.5h2v3h-2"/><path d="M8 10v4M12 10v4"/></symbol>
+<symbol id="i-yen" viewBox="0 0 24 24"><path d="M7 4l5 8 5-8M12 12v8M8 14h8M8 17h8"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+</svg>
+<main>
+<header class="hd"><h1>スマホ配信の構成さがし</h1><p>マイクやPCの音（BGMなど）をスマホの配信アプリ（IRIAMなど）に入れる機材の組み合わせ。条件を選ぶと合う構成だけが並びます。行を押すと詳細が開き、点線の語や「?」に触れると説明が出ます。</p></header>
+<section class="card"><div class="card-hd"><h2>条件</h2><button type="button" class="btn" id="reset">条件をクリア</button></div>
+<div class="filters" id="filters">
+<div class="grp"><h3>マイク</h3><div class="gg" data-g="mic"></div></div>
+<div class="grp"><h3>PC</h3><div class="gg" data-g="pc"></div></div>
+<div class="grp"><h3>スマホ</h3><div class="gg" data-g="phone"></div></div>
+</div></section>
+<section class="card owned">
+<div class="card-hd"><h2>持っている機材<button type="button" class="q" data-tip="機材を名前と機能で登録します。役割は決めなくてかまいません。各構成で使える機材は緑で表示し、費用から除きます。複数あれば全部登録してください。">?</button></h2></div>
+<p class="note">名前と機能で登録すると、使える構成が緑になり、費用から除かれます。登録した機材と選んだ条件は、次に開いたときも残ります。</p>
+<div id="devs"></div>
+<div class="addrow"><select id="preset"><option value="">よくある機材から追加…</option></select><button type="button" id="addDev">空の行を追加</button><button type="button" id="clearDevs" hidden>登録した機材をすべて消す</button><span class="count">プリセットの機能は目安です。</span></div>
+</section>
+
+<div class="bar">
+<label>並べ替え<select id="sort"><option value="simple">シンプルな順</option><option value="own">持っている機材で組める順</option><option value="cost">追加費用が安い順</option><option value="verified">確認済みを先に</option><option value="stereo">ステレオを先に</option><option value="id">番号順</option></select></label>
+<span class="count" id="count"></span>
+</div>
+
+<section id="list"></section>
+
+<section class="tips">
+<h2>Tips（必要なときだけ開く）</h2>
+<details class="tip"><summary>PCの音をスマホに送る方法</summary><div class="tb"><p>PCの音（マイク・BGM・効果音）はOBSで1つにまとめ、選んだ出力先（ヘッドホン端子、USB DAC、IFなど）へ出します。OBS標準のモニタリング機能でもできます。</p><p>自分がPCで聞く音とスマホへ送る音を分けたいときは、無料のOBSプラグイン <a href="https://note.com/haru_nyan_co22/n/n8356267d60a0" target="_blank" rel="noopener">External Audio Output</a> を推奨します（Windows用、<a href="https://github.com/harunyan22/obs-external-audio-output/releases/tag/v0.1.0" target="_blank" rel="noopener">GitHub</a>）。送るトラックを選べるので、「PCからはBGMだけ」の構成も作れます。</p><p>費用はマイクとPCを除いた追加購入の目安です。</p></div></details>
+<details class="tip"><summary>持っている機材の登録のしかた</summary><div class="tb"><ul>
+<li>1台につき1行。名前は自由（例：AG03、M2）。役割は選びません。</li>
+<li><b>オーディオIF／ミキサー（USB）</b>：USB端子の形、XLR入力の数、ライン入力の有無、スマホにUSBでつなげるか、PCとスマホに同時につなげるかをチェックします。</li>
+<li>足りない機材は、その行の「必要なもの」に赤字で理由が出ます。</li>
+<li>登録した機材は、次に開いたときも残ります。</li>
+</ul></div></details>
+<details class="tip"><summary>PCの音を出す3つの方法</summary><div class="tb"><ul>
+<li><b>ソフトなし</b>：Windowsの再生デバイスをIFにすると、PCの音はIFから出ます。マイクはIFのダイレクトモニターで混ざります。調整はできません。</li>
+<li><b>OBS標準のモニタリング</b>：設定 → 音声 → 詳細設定で「モニタリングデバイス」を送り先にし、ソースを「モニターと出力」にします。自分が聞く音も同じ機材からになります。</li>
+<li><b>External Audio Output（推奨）</b>：自分はPCのヘッドホンで聞いたまま、別の機材へ送りたいときに使います。</li>
+</ul></div></details>
+<details class="tip"><summary>音が二重・繰り返しになるとき</summary><div class="tb"><ul>
+<li>OBSの出力先が、BGMを再生しているデバイスや「デスクトップ音声」が取り込むデバイスと同じだと、出した音をOBSがもう一度取り込みます。別のデバイスにします。</li>
+<li>OBSでマイクを取り込みつつ、IFのダイレクトモニターやミキサーのマイク直通もオンだと、マイクが2経路で混ざります。どちらか一方にします。</li>
+<li>スマホ側の機材のループバックはオフにします。オンだとスマホの音が入力へ戻ってエコーになります。</li>
+</ul></div></details>
+<details class="tip"><summary>一覧に載せていない方法と、その理由</summary><div class="tb"><ul>
+<li><b>Bluetoothでスマホに送る</b>：スマホのマイク入力としてつなぐと通話用の音質になり、音が大きく劣化して遅延も100ms以上出ます。</li>
+<li><b>PCのスピーカーの音をスマホの内蔵マイクで拾う</b>：部屋の音をそのまま拾うので、配信向きではありません。</li>
+<li><b>仮想オーディオケーブルだけで送る</b>：iPhoneへ音を入れる物理的な経路が無いので、単独では成立しません。</li>
+</ul></div></details>
+<details class="tip"><summary>スマホ側で気をつけること</summary><div class="tb"><ul>
+<li>外部の音声入力をつなぐと、スマホの内蔵マイクは使われません。</li>
+<li>Bluetoothイヤホンをスマホにつなぐと、入力がそのマイクに切り替わることがあります。配信中は外してください。</li>
+<li>音が割れるときはPC側の音量を下げます。それでも割れるなら抵抗入り（アッテネーター）ケーブルを使います。</li>
+<li>PCとスマホを同じ電源につないで「ブーン」というノイズが出るときは、グランドループアイソレーターを試します。</li>
+</ul></div></details>
+<details class="tip"><summary>番号（#111 など）の読み方</summary><div class="tb"><p>3桁の番号は構成の中身を表します。番号は条件を変えても同じなので、質問や共有に使えます。</p><ul>
+<li><b>百の位＝マイク</b>：1 USBマイク／2 XLRマイク×1／3 XLRマイク×2／4 その他（3.5mm・内蔵・ワイヤレス）</li>
+<li><b>十の位＝スマホに音を入れる機材と経路</b>：1 変換アダプタ（充電可）／2 純正変換＋分岐／3 USBミキサー／4 PCとスマホ同時USB接続のIF／5 USBミキサー（マイクはじかに）／6 同時接続IF（マイクはじかに）／9 PCを使わない</li>
+<li><b>一の位＝PCのどこから音を出す</b>：1 ヘッドホン端子／2 USB DAC／3 IFの出力端子／4 モニター（HDMI）／0 USBで戻す（同時接続IF）。十の位が9（PCを使わない）のときは機材：1 変換アダプタ／2 純正変換＋分岐／3 USBミキサー／7 USBマイクをスマホに直結</li>
+</ul><p>例：#111＝USBマイク → ヘッドホン端子 → 変換アダプタ。#251＝XLRマイク×1をUSBミキサーにじかに挿し、PCの音はヘッドホン端子から。#197＝USBマイクをスマホに直結。</p></div></details>
+<details class="tip"><summary>「シンプル」「費用」の決め方</summary><div class="tb"><p>シンプルさは、マイク・PC・スマホ以外に置く機材の数と、落とし穴（ダイレクトモニターの二重など）の数から3段階にしています。費用は各機材の相場を足したもので、持っている機材で足りる分は除いています。</p></div></details>
+</section>
+<p class="ask">この構成で配信できた、できなかった、書いてあることが違う、といったことがあれば、<a href="https://note.com/haru_nyan_co22/n/n8356267d60a0" target="_blank" rel="noopener">noteの記事</a>のコメントで構成の番号（#111 など）と一緒に教えてください。確認済みの更新に使います。</p>
+</main>
+<div id="tt" role="tooltip"></div>
+<script>
+(function(){
+const LINKS={article:'https://note.com/haru_nyan_co22/n/n8356267d60a0',github:'https://github.com/harunyan22/obs-external-audio-output/releases/tag/v0.1.0'};
+// 確認済みの構成の番号。作者の実機確認も、Web・SNS・コミュニティの動作報告も同じ「確認済み」。スマホの種類は問わない（出典は README に記録）
+const VERIFIED=new Set([
+  111, // USBマイク → ヘッドホン端子 → 変換アダプタ
+  131, // USBマイク → ヘッドホン端子 → USBミキサー（AG03 / UCA222）
+  122, // USBマイク → USB DAC → 純正変換＋分岐
+  197, // USBマイクをスマホに直結
+  251, // XLR×1 をミキサーにじかに（AG03 / AG06）、PC はヘッドホン端子
+  233,333, // XLR → IF（M2）→ IF の出力端子 → RCA → AG03
+  260, // XLR×1 を同時接続 IF（E2x2 OTG）にじかに、PC の音は USB で
+  293  // XLR×1 → AG03MK2 → USB-C → iPhone 15（PC なし）
+]);
+// ---------- 部品 ----------
+const MIC={
+  usbmic:{label:'USBマイク',short:'USBマイク',icon:'mic',pc:true,direct:false,n:0},
+  xlr1:{label:'XLRマイク ×1',short:'XLRマイク',icon:'mic',pc:true,direct:true,n:1},
+  xlr2:{label:'XLRマイク ×2（2chマイク）',short:'XLR×2',icon:'mic2',pc:true,direct:true,n:2},
+  other:{label:'その他のマイク（3.5mm・内蔵・ワイヤレス）',short:'その他マイク',icon:'mic',pc:true,direct:false,n:0}
+};
+const IFCOST={1:[10000,15000],2:[15000,25000]};
+const OUT={
+  analog:{label:'PCのヘッドホン端子',short:'ヘッドホン端子',icon:'jack',cost:[0,0],cx:0,level:'basic',notes:['OBSの出力先にこの端子を選びます。自分が聞く音は別のデバイス（USBマイクやIFのヘッドホン端子など）にします。']},
+  usbdac:{label:'USB DAC（USBサウンドアダプタ）',short:'USB DAC',icon:'usb',cost:[800,2000],cx:1,level:'basic',notes:['ヘッドホン端子を自分の視聴に使っている、または端子が無いPC向け。出力端子を1つ増やして、OBSの出力先にそれを選びます。']},
+  ifout:{label:'IFの出力端子',short:'IFの出力',icon:'if',cost:[0,0],cx:2,level:'maniac',notes:['IFのダイレクトモニターが入っていると、マイクがOBS経由と直通の2経路で混ざって二重になります。ダイレクトモニターを切るか、モニターMIXをPC側（USB）に振ります。','IFにループバックがある場合はオフにします。']},
+  hdmi:{label:'モニター（HDMI）のヘッドホン端子',short:'モニター',icon:'mon',cost:[0,0],cx:1,level:'maniac',notes:['OBSの出力先にモニター（HDMI/DP音声）を選びます。モニターによって音量や遅延が変わります。']},
+  otg:{label:'IFへUSBで戻す（PCとスマホ同時USB接続）',short:'',icon:'',cost:[0,0],cx:0,level:'basic',notes:['OBSの出力先にこのIFを選びます。音はUSBでIFへ戻り、もう1つのUSB端子からスマホへ送られます。AUXケーブルは要りません。']}
+};
+const RX={
+  adp_chg:{label:'変換アダプタ（充電可）',short:'変換アダプタ',sub:'充電可',icon:'adp',cost:[2500,3500],cx:1,stereo:false,charge:'yes',mic:false,level:'basic',need:['3.5mmマイク入力＋充電端子付きの変換アダプタ'],notes:['アダプタのイヤホン側で聞けるのはスマホの音だけです。']},
+  adp_split:{label:'純正変換＋分岐（充電不可）',short:'純正変換＋分岐',sub:'充電不可',icon:'adp',cost:[1500,3000],cx:1,stereo:false,charge:'no',mic:false,level:'maniac',need:['USB-C（またはLightning）–3.5mm変換アダプタ','TRRS（4極）分岐ケーブル'],notes:['端子を変換アダプタが占有するので充電できません。短時間の配信向けです。']},
+  usbif:{label:'USBミキサー（ライン入力あり）',short:'USBミキサー',sub:'ライン入力あり',icon:'mix',cost:[15000,25000],cx:1,stereo:true,charge:'dep',mic:true,level:'basic',need:['ライン入力（AUX／LINE IN）のあるUSBミキサー'],notes:['ライン入力が無い機材はPCの音を入れられません。','機材のヘッドホン端子で、配信アプリの音（ギフト音など）も聞けます。','機種によって別電源が必要です。充電しながら使うなら、充電パススルー対応かを確認します。']},
+  otgif:{label:'PCとスマホ同時USB接続のIF',short:'同時接続IF',sub:'PC・スマホ両方USB',icon:'otg',cost:[15000,30000],cx:1,stereo:true,charge:'dep',mic:true,level:'basic',need:['PCとスマホ同時USB接続可のIF（USB端子が2つあるもの）'],notes:['Topping E2x2 OTG など。','マイクをOBSにも取り込むときは、IF側でマイクをスマホへ直接送る設定を切ります（二重になるため）。','IFのヘッドホン端子で、PCの音とマイクをまとめて聞けます。','スマホ側の給電（バスパワーで足りるか、別電源が要るか）を確認します。']},
+  usbmicd:{label:'USBマイクをスマホに直結',short:'USB直結',sub:null,icon:'usb',cost:[0,0],cx:0,stereo:false,charge:'dep',mic:false,level:'basic',need:['スマホにつなげるUSBマイク（USB-Cで直結。Lightning機はカメラアダプタ経由）'],notes:['充電しながら使うには、PD給電付きのUSB-Cハブなどが必要です。','USBマイクのヘッドホン端子で配信アプリの音を聞けます。','USBマイクは多くがモノラルです。']},
+  bt:{label:'Bluetooth（スマホのマイク入力として）',short:'Bluetooth',icon:'bt',cost:[2000,3000],cx:2,stereo:false,charge:'yes',mic:false,level:'bad',need:['Bluetooth送信機（PC側）'],notes:['通話用の音質になるため音が大きく劣化し、遅延も100ms以上出ます。おすすめしません。']},
+  air:{label:'スピーカーの音をスマホの内蔵マイクで拾う',short:'スピーカー→内蔵マイク',icon:'spk',cost:[0,0],cx:0,stereo:false,charge:'yes',mic:false,level:'bad',need:[],notes:['部屋の音をそのまま拾うので音質・ノイズともに厳しく、比較のための最低ラインとして載せています。']}
+};
+const CABLE={label:'AUXケーブル（両端3.5mm）',cost:[500,1000]};
+
+// ---------- 持っている機材 ----------
+const DTYPES={if:'オーディオIF／ミキサー（USB）',adp:'変換アダプタ（充電可）',split:'純正変換＋分岐',dac:'USB DAC',mon:'モニター（HDMI）',mic_usb:'USBマイク',mic_xlr:'XLRマイク'};
+const USBK={usbc:'USB-C',usbb:'USB-B',micro:'micro-USB',incl:'専用ケーブル付属',unk:'USB端子の形？'};
+const PRESETS=[
+  {name:'AG03（初代）',type:'if',xlr:1,line:true,phone:true,dual:false,usb:'usbb'},
+  {name:'AG03MK2',type:'if',xlr:1,line:true,phone:true,dual:false,usb:'usbc'},
+  {name:'AG06（初代）',type:'if',xlr:2,line:true,phone:true,dual:false,usb:'usbb'},
+  {name:'AG06MK2',type:'if',xlr:2,line:true,phone:true,dual:false,usb:'usbc'},
+  {name:'iRig Stream',type:'if',xlr:0,line:true,linein:'rca',phone:true,dual:false,usb:'incl'},
+  {name:'ZOOM AMS-22',type:'if',xlr:1,line:true,phone:true,dual:false,usb:'usbc'},
+  {name:'MOTU M2',type:'if',xlr:2,line:false,phone:false,dual:false,usb:'usbc'},
+  {name:'Scarlett 2i2 / URX22C',type:'if',xlr:2,line:false,phone:false,dual:false,usb:'usbc'},
+  {name:'Topping E2x2 OTG',type:'if',xlr:2,line:true,phone:true,dual:true,usb:'usbc'},
+  {name:'Domnime 配信用変換アダプタ',type:'adp'},
+  {name:'USB DAC（サウンドアダプタ）',type:'dac'},
+  {name:'USBマイク',type:'mic_usb'},
+  {name:'XLRマイク',type:'mic_xlr',xlr:1}
+];
+let DEVS=[];
+const devsEl=document.getElementById('devs');
+function devRow(d,i){
+  const isIf=d.type==='if',isXm=d.type==='mic_xlr';
+  return '<div class="dev" data-i="'+i+'">'+
+    '<input type="text" class="dname" placeholder="名前（例：AG03）" value="'+esc(d.name||'')+'">'+
+    '<select class="dtype">'+Object.keys(DTYPES).map(k=>'<option value="'+k+'"'+(k===d.type?' selected':'')+'>'+DTYPES[k]+'</option>').join('')+'</select>'+
+    (isIf||isXm?'<select class="dxlr">'+[0,1,2].map(n=>'<option value="'+n+'"'+(n===(d.xlr|0)?' selected':'')+'>'+(isXm?(n===0?'本数?':'×'+n+(n===2?'以上':'')):(n===0?'XLR入力なし':'XLR×'+n+(n===2?'以上':'')))+'</option>').join('')+'</select>':'')+
+    (isIf?'<select class="dusb" title="USB端子の形">'+Object.keys(USBK).map(k=>'<option value="'+k+'"'+(k===(d.usb||'unk')?' selected':'')+'>'+USBK[k]+'</option>').join('')+'</select><label><input type="checkbox" class="dline"'+(d.line?' checked':'')+'>'+mark('ライン入力あり')+'</label><label><input type="checkbox" class="dphone"'+(d.phone?' checked':'')+'>'+mark('スマホにUSB接続可')+'</label><label><input type="checkbox" class="ddual"'+(d.dual?' checked':'')+'>'+mark('PCとスマホ同時USB接続可')+'</label>':'')+
+    '<button type="button" class="del" title="この行を削除">削除</button></div>';
+}
+function renderDevs(){devsEl.innerHTML=DEVS.map(devRow).join('');document.getElementById('clearDevs').hidden=DEVS.length===0;}
+function readDevRow(row){
+  const d=DEVS[+row.dataset.i];
+  d.name=row.querySelector('.dname').value;d.type=row.querySelector('.dtype').value;
+  const x=row.querySelector('.dxlr');d.xlr=x?+x.value:0;
+  const u=row.querySelector('.dusb');d.usb=u?u.value:'unk';
+  d.line=!!row.querySelector('.dline')?.checked;d.phone=!!row.querySelector('.dphone')?.checked;d.dual=!!row.querySelector('.ddual')?.checked;
+}
+devsEl.addEventListener('input',e=>{const row=e.target.closest('.dev');if(!row)return;readDevRow(row);if(e.target.classList.contains('dtype')){renderDevs();}render();saveState();});
+devsEl.addEventListener('change',e=>{const row=e.target.closest('.dev');if(!row)return;readDevRow(row);if(e.target.classList.contains('dtype')){renderDevs();}render();saveState();});
+devsEl.addEventListener('click',e=>{if(!e.target.classList.contains('del'))return;const row=e.target.closest('.dev');DEVS.splice(+row.dataset.i,1);renderDevs();render();saveState();});
+document.getElementById('clearDevs').addEventListener('click',()=>{DEVS=[];renderDevs();render();saveState();});
+document.getElementById('addDev').addEventListener('click',()=>{DEVS.push({name:'',type:'if',xlr:1,line:false,phone:false,dual:false,usb:'unk'});renderDevs();render();saveState();devsEl.querySelector('.dev:last-child .dname')?.focus();});
+const presetSel=document.getElementById('preset');
+PRESETS.forEach((p,i)=>{const o=document.createElement('option');o.value=i;o.textContent=p.name;presetSel.appendChild(o);});
+presetSel.addEventListener('change',()=>{if(presetSel.value==='')return;DEVS.push(Object.assign({name:'',xlr:0,line:false,phone:false,dual:false,usb:'unk'},PRESETS[+presetSel.value]));presetSel.value='';renderDevs();render();saveState();});
+
+// ---------- 全パターン生成 ----------
+// 番号は 3 桁で意味を持たせる: 百の位=マイク、十の位=スマホに音を入れる機材と経路、一の位=PC のどこから音を出す（Tips「番号の読み方」）
+const CODE_M={usbmic:1,xlr1:2,xlr2:3,other:4};
+const CODE_O={analog:1,usbdac:2,ifout:3,hdmi:4,otg:0};
+function code(m,path,o,r,bgm){
+  if(bgm==='none') return CODE_M[m]*100+90+{adp_chg:1,adp_split:2,usbif:3,usbmicd:7}[r];
+  const t={adp_chg:1,adp_split:2,usbif:path==='direct'?5:3,otgif:path==='direct'?6:4}[r];
+  return CODE_M[m]*100+t*10+CODE_O[o];
+}
+const P=[];
+for(const m of Object.keys(MIC)){
+  for(const path of ['pc','direct']){
+    if(path==='pc'&&!MIC[m].pc) continue;
+    if(path==='direct'&&!MIC[m].direct) continue;
+    for(const o of Object.keys(OUT)){
+      if(o==='ifout'){ if(path!=='pc') continue; if(m==='other') continue; }
+      for(const r of Object.keys(RX)){
+        if((o==='otg')!==(r==='otgif')) continue;
+        if(path==='direct'&&!RX[r].mic) continue;
+        if(RX[r].level==='bad'||r==='usbmicd') continue; // Bluetooth・空気録音は一覧に載せない（Tips で理由を説明）
+        P.push({id:code(m,path,o,r,'pc'),m,path,o,r,bgm:'pc'});
+      }
+    }
+  }
+}
+// PC を使わない構成（マイクだけをスマホへ入れる。BGM は配信アプリやスマホ側で用意）
+for(const m of Object.keys(MIC)){
+  const rs = m==='usbmic'?['usbmicd'] : (m==='other'?['adp_chg','adp_split'] : ['usbif']);
+  for(const r of rs) P.push({id:code(m,'direct',null,r,'none'),m,path:'direct',o:null,r,bgm:'none'});
+}
+
+// ---------- 持っている機材の割り当て ----------
+function assign(p){
+  const mic=MIC[p.m],n=mic.n,used=new Set(),A={notes:[],bad:[]};
+  // score が小さい候補を優先（PC側IFには、スマホ側に使えない機材を先に回す）
+  const pick=(fn,score)=>{const c=DEVS.filter(x=>!used.has(x)&&fn(x));if(score)c.sort((a,b)=>score(a)-score(b));const d=c[0];if(d)used.add(d);return d||null;};
+  const ifScore=d=>(d.line&&d.phone?2:0)+(d.dual?1:0)+d.xlr*0.1;
+  const nm=d=>d&&(d.name.trim()||DTYPES[d.type]);
+  // マイク
+  if(p.m==='usbmic') A.mic=pick(d=>d.type==='mic_usb');
+  if(n>0) A.mic=pick(d=>d.type==='mic_xlr'&&(d.xlr|0)>=n);
+  // PC側IF（XLRをPCへ入れる）。同時接続IFの構成ではその IF が兼ねる
+  if(p.path==='pc'&&n>0&&p.r!=='otgif'){
+    A.if=pick(d=>d.type==='if'&&d.xlr>=n,ifScore);
+    if(!A.if){const near=DEVS.find(d=>d.type==='if'&&!used.has(d));if(near&&near.xlr<n)A.bad.push('手持ちの'+nm(near)+'はXLR×'+near.xlr+'なので、マイク'+(n===2?'2本':'')+'を入れるには足りません');}
+  }
+  // PCの出力
+  if(p.o==='usbdac') A.dac=pick(d=>d.type==='dac');
+  if(p.o==='hdmi') A.mon=pick(d=>d.type==='mon');
+  // スマホ側
+  const needX=p.path==='direct'?n:0;
+  if(p.r==='usbif'){
+    const needLine=p.bgm==='pc'; // PC の音を入れないならライン入力は不要
+    A.rx=pick(d=>d.type==='if'&&(d.line||!needLine)&&d.phone&&d.xlr>=needX);
+    if(!A.rx){
+      const c=DEVS.filter(d=>d.type==='if'&&!used.has(d));
+      const a=c.find(d=>(d.line||!needLine)&&d.phone&&d.xlr<needX);if(a)A.bad.push('手持ちの'+nm(a)+'はXLR×'+a.xlr+'なので、マイクをじかに'+(needX===2?'2本':'')+'挿すには足りません');
+      const b=needLine&&c.find(d=>d.phone&&!d.line);if(b)A.bad.push('手持ちの'+nm(b)+'はライン入力が無いので、PCの音を入れられません');
+      const e=c.find(d=>(d.line||!needLine)&&!d.phone);if(e)A.bad.push('手持ちの'+nm(e)+'はスマホにUSBでつなげないので、スマホ側には使えません');
+    }
+  }
+  if(p.r==='otgif'){
+    const needO=p.path==='direct'?n:(p.path==='pc'?n:0);
+    A.rx=pick(d=>d.type==='if'&&d.dual&&d.xlr>=needO);
+    if(!A.rx){const a=DEVS.find(d=>d.type==='if'&&d.dual&&!used.has(d));if(a&&a.xlr<needO)A.bad.push('手持ちの'+nm(a)+'はXLR×'+a.xlr+'なので足りません');}
+  }
+  if(p.r==='adp_chg') A.rx=pick(d=>d.type==='adp');
+  if(p.r==='adp_split') A.rx=pick(d=>d.type==='split');
+  A.nm=nm;return A;
+}
+
+// ---------- 名前 ----------
+const DEV={any:'',ipc:'iPhone（USB-C）',ipl:'iPhone（Lightning）',and:'Android'};
+function labels(p,A){
+  const mic=MIC[p.m],out=OUT[p.o]||{label:'',short:''},rx=RX[p.r],n=mic.n;
+  const micL=A.mic?A.nm(A.mic):mic.label, micS=A.mic?A.nm(A.mic):mic.short;
+  let ifL=null,ifS=null,ifSub=null;
+  if(p.path==='pc'&&n>0){
+    if(p.r==='otgif'){ifL=A.rx?A.nm(A.rx):rx.label;ifS=A.rx?A.nm(A.rx):rx.short;ifSub=A.rx?null:rx.sub;}
+    else{ifL=A.if?A.nm(A.if):'オーディオIF（XLR×'+n+'）';ifS=A.if?A.nm(A.if):'IF';ifSub=A.if?null:'XLR×'+n;}
+  }
+  const needX=p.path==='direct'?n:0;
+  const noPc=p.bgm==='none';
+  const rxL=A.rx?A.nm(A.rx):(p.r==='usbif'&&needX?(noPc?'USBミキサー（XLR×'+needX+'・スマホにUSB接続可）':'USBミキサー（XLR×'+needX+'・ライン入力あり）'):rx.label);
+  const rxS=A.rx?A.nm(A.rx):rx.short;
+  const rxSub=A.rx?null:(p.r==='usbif'&&needX?(noPc?'XLR×'+needX+'・スマホUSB':'XLR×'+needX+'・ライン入力'):(rx.sub||null));
+  let outL=out.label,outS=out.short;
+  if(p.o==='usbdac'&&A.dac){outL=A.nm(A.dac);outS=outL;}
+  if(p.o==='hdmi'&&A.mon){outL=A.nm(A.mon);outS=outL;}
+  if(p.o==='ifout'){ if(p.m==='usbmic'){outL=micL+'のヘッドホン端子';outS='マイクのヘッドホン端子';} else {outL=(ifL||'IF')+'の出力端子';outS=(ifS==='IF'||!ifS)?'IFの出力':ifS+'の出力';} }
+  if(p.o==='otg'){outL=rxL;outS='';}
+  return {micL,micS,ifL,ifS,ifSub,rxL,rxS,rxSub,outL,outS};
+}
+// スマホとの間に挟む「物」（変換アダプタ・カメラアダプタ）。ケーブルは矢印で表すので含めない
+function adapters(p,A,f){
+  const out=[];
+  const usbRx = p.r==='usbif'||p.r==='otgif'||p.r==='usbmicd';
+  if(!usbRx) return out;
+  const u = p.r==='usbif'&&A.rx ? (A.rx.usb||'unk') : (p.r==='usbmicd'?'usbc':'unk');
+  const inclCable=p.r==='usbif'&&!!A.rx&&A.rx.usb==='incl';
+  if(f.device==='ipl'){ if(!inclCable) out.push({icon:'adp',lb:'カメラアダプタ',sub:'給電付き',text:'カメラアダプタ'}); }
+  else if(needHub(p,f)) out.push({icon:'usb',lb:'給電ハブ',sub:'USB-C・PD',text:'給電付きUSB-Cハブ'}); // ハブの USB-A に付属ケーブルでつなぐので USB-C 変換は不要
+  else if((f.device==='ipc'||f.device==='and'||f.device==='any')&&(u==='usbb'||u==='micro')) out.push({icon:'usb',lb:'USB-C変換',sub:USBK[u]+'→C',text:'USB-C変換（'+USBK[u]+'→USB-C）'});
+  return out;
+}
+// USB 機材でスマホの端子がふさがるとき、配信中に充電するには給電パススルー付きのハブが要る（Lightning はカメラアダプタが兼ねる）
+function needHub(p,f){
+  return f.charge==='yes' && f.device!=='ipl' && (p.r==='usbif'||p.r==='otgif'||p.r==='usbmicd');
+}
+function chainText(p,A,f){
+  const {micL,ifL,rxL,outL}=labels(p,A),S='スマホ';
+  const ad=adapters(p,A,f).map(a=>a.text);
+  if(p.bgm==='none'){
+    if(p.r==='usbmicd') return [micL,'USB',...ad,S].join(' → ');
+    if(p.r==='usbif') return [micL,rxL,'USB',...ad,S].join(' → ');
+    return (p.m==='other'?'3.5mmマイク':micL)+' → '+rxL+' → '+S;
+  }
+  if(p.r==='air') return [micL,'PC（OBS）','PCのスピーカー','（空気）',S+'の内蔵マイク'].join(' → ');
+  if(p.r==='bt') return [micL,'PC（OBS）','Bluetooth送信',S].join(' → ');
+  let tail;
+  if(p.r==='otgif') tail=['USB',rxL,'USB',...ad,S];
+  else tail=[p.o==='ifout'&&p.m!=='usbmic'?'TRS→RCAなどの変換ケーブル':'AUXケーブル',rxL,...(p.r==='usbif'?['USB',...ad]:[]),S];
+  const pcNode='PC（OBS'+(p.path==='direct'?'：BGMだけ':'')+'）';
+  if(p.path==='direct') return micL+' → '+rxL+'（じかに）　／　'+[pcNode,p.o==='otg'?'':outL,...tail].filter(Boolean).join(' → ');
+  return [micL,ifL,pcNode,p.o==='otg'?'':outL,...tail].filter(Boolean).join(' → ');
+}
+const node=(icon,lb,sub,cls,have,same)=>'<span class="node '+(cls||'')+(have?' have':'')+(same?' same':'')+'"><svg><use href="#i-'+icon+'"/></svg><span class="lb">'+mark(lb)+(sub?'<small>'+mark(sub)+'</small>':'')+(same?'<small class="sm">同じ1台</small>':'')+'</span></span>';
+const AR='<span class="arrow">→</span>';
+function chainHTML(p,A,f){
+  const L=labels(p,A),mic=MIC[p.m],out=OUT[p.o],rx=RX[p.r];
+  const PC=node('pc','PC',p.path==='direct'?'OBS（BGMだけ）':'OBS','pc');
+  // スマホの前に、必要な変換アダプタ・カメラアダプタを挟む
+  const PH=[...adapters(p,A,f).map(a=>node(a.icon,a.lb,a.sub)),node('phone','スマホ',null,'phone')].join(AR);
+  const MN=node(mic.icon,L.micS,null,'',!!A.mic);
+  const RXN=node(rx.icon,L.rxS,L.rxSub,'rx',!!A.rx);
+  if(p.bgm==='none'){
+    if(p.r==='usbmicd') return '<div class="chain">'+[MN,PH].join(AR)+'</div>';
+    return '<div class="chain">'+[MN,RXN,PH].join(AR)+'</div>';
+  }
+  if(p.r==='air') return '<div class="chain">'+[MN,PC,node('spk','スピーカー','空気'),node('phone','スマホ','内蔵マイク','phone')].join(AR)+'</div>';
+  if(p.r==='bt') return '<div class="chain">'+[MN,PC,node('bt','Bluetooth','送信'),PH].join(AR)+'</div>';
+  const micJack = p.o==='ifout'&&p.m==='usbmic'; // USB マイクのヘッドホン端子を出力先にする
+  const outHave = (p.o==='usbdac'&&!!A.dac)||(p.o==='hdmi'&&!!A.mon)||(p.o==='ifout'&&(micJack?!!A.mic:!!A.if));
+  const outN = p.o==='otg'?null:node(micJack?'jack':out.icon,L.outS,null,'',outHave);
+  if(p.path==='direct'){
+    // 同じ機材を2回描かず、マイクを機材の真上に置いて下向き矢印でつなぐ
+    const stack='<span class="stack">'+MN+'<span class="varrow">↓<small>じかに</small></span>'+RXN+'</span>';
+    return '<div class="chain direct">'+[PC,outN,stack,PH].filter(Boolean).join(AR)+'</div>';
+  }
+  const twice = p.r==='otgif' && !!L.ifS; // PC側IFとスマホ側を同じ1台が兼ねる
+  const ifN = L.ifS? node(p.r==='otgif'?'otg':'if',L.ifS,L.ifSub,p.r==='otgif'?'rx':'',p.r==='otgif'?!!A.rx:!!A.if,twice) : null;
+  const RX2 = twice? node(rx.icon,L.rxS,L.rxSub,'rx',!!A.rx,true) : RXN;
+  return '<div class="chain">'+[MN,ifN,PC,outN,RX2,PH].filter(Boolean).join(AR)+'</div>';
+}
+// 条件に合うか（端末は注意点にしか効かないので見ない）
+// PC を使わないなら「声は OBS に入れる？」「PC のどこから音を出す」は効かない。XLR 以外は「声は OBS に入れる？」も効かない（render と同じ規則）
+function effective(f){const g=Object.assign({},f); if(g.bgm==='none'){g.path='any';g.pcout='any';} if(g.mic!=='any'&&!MIC[g.mic].direct) g.path='any'; return g;}
+function fits(p,f){
+  const rx=RX[p.r];
+  if(f.bgm!=='any'&&f.bgm!==p.bgm) return false;
+  if(f.mic!=='any'&&f.mic!==p.m) return false;
+  if(f.path!=='any'&&f.path!==p.path) return false;
+  if(f.stereo==='yes'&&!rx.stereo) return false;
+  if(f.charge==='yes'&&rx.charge==='no') return false;
+  if(f.pcout!=='any'&&f.pcout!==p.o) return false;
+  if(f.rx!=='any'&&f.rx!==p.r) return false;
+  return true;
+}
+function evaluate(p,f){
+  const mic=MIC[p.m],out=OUT[p.o],rx=RX[p.r],n=mic.n,A=assign(p),L=labels(p,A);
+  const need=[],notes=[...A.notes],cost=[0,0];let cx=0,missing=0;
+  const add=(c,have)=>{if(have)return;cost[0]+=c[0];cost[1]+=c[1];missing++;};
+  if(p.path==='pc'){
+    if(n>0&&p.r==='otgif'){need.push(L.rxL+'がオーディオIFを兼ねます（XLR×'+n+'以上。コンデンサマイクならファンタム電源）');}
+    else if(n>0){need.push(L.ifL+'（コンデンサマイクならファンタム電源）');add(IFCOST[n],!!A.if);cx+=1;}
+    else need.push(L.micL);
+    if(p.m==='xlr2') notes.push('左右を残して送るには、スマホ側がUSB接続（ステレオ）であることが必要です。');
+    if(p.m==='other') notes.push('PCのマイク端子の音質はPC次第です。');
+  }else if(p.bgm==='none'){
+    if(p.r==='usbif') need.push(L.rxL+'にXLR（コンボ）入力が'+(n===2?'2つ':'1つ以上')+'（コンデンサマイクならファンタム電源）');
+    else if(p.r==='usbmicd') need.push(L.micL);
+    else need.push('3.5mmプラグのマイク（ワイヤレスマイクは受信機の出力）');
+    notes.push('PCは使いません。BGMは配信アプリやスマホ側で用意します。');
+  }else{
+    need.push(L.rxL+'にXLR（コンボ）入力が'+(n===2?'2つ':'1つ以上')+'（コンデンサマイクならファンタム電源）');
+    notes.push('PCからはBGMだけ送るので、OBSでマイクを出力先から外します。');
+  }
+  if(p.bgm==='pc') need.unshift('OBS＋External Audio Output（推奨。OBS標準のモニタリングでも可）。出力先は「'+L.outL+'」');
+  if(p.o){
+    if(p.o!=='otg') need.push('PCの出力：'+L.outL);
+    add(out.cost,(p.o==='usbdac'&&!!A.dac)||(p.o==='hdmi'&&!!A.mon)||p.o==='analog'||p.o==='ifout'||p.o==='otg');cx+=out.cx;notes.push(...(p.o==='ifout'&&p.m==='usbmic'?[]:out.notes));
+    if(p.o==='ifout'&&p.m==='usbmic') notes.unshift('USBマイクのヘッドホン端子を出力先にする形です。マイクの直接モニターを切らないとマイクが二重に混ざります。');
+  }
+  if(p.r!=='usbmicd') need.push('スマホ側：'+L.rxL);
+  add(rx.cost,!!A.rx||(p.r==='usbmicd'&&!!A.mic));cx+=rx.cx;
+  if(!A.rx){ if(p.r==='usbif'&&p.bgm==='none') need.push('スマホにUSB接続できるミキサー／IF（ライン入力は不要）'); else need.push(...rx.need); }
+  notes.push(...(p.r==='usbif'&&p.bgm==='none'?rx.notes.slice(1):rx.notes));
+  if(p.r==='otgif'){need.push('USBケーブル2本（PC用、スマホ用）');}
+  else if(p.bgm==='pc'){
+    cost[0]+=CABLE.cost[0];cost[1]+=CABLE.cost[1];
+    const rcaIn=!!(A.rx&&A.rx.linein==='rca');
+    need.push(p.o==='ifout'&&p.m!=='usbmic'?'変換ケーブル（IFの出力 TRS → 機材のライン入力 RCA／3.5mm）':(rcaIn?'AUXケーブル（3.5mm–RCA）':CABLE.label));
+  }
+  const inclCable=p.r==='usbif'&&!!A.rx&&A.rx.usb==='incl'; // Lightning ケーブルが付属する機材（iRig Stream）はカメラアダプタ不要
+  if(f.device==='ipl'){
+    if((p.r==='usbif'||p.r==='otgif'||p.r==='usbmicd')&&!inclCable){need.push('カメラアダプタ（Lightning–USB 3、給電付き）');cost[0]+=5000;cost[1]+=6500;cx+=1;missing++;}
+    if(p.r==='adp_chg') notes.push('Lightning対応の製品を選びます。');
+  }
+  // スマホと機材をつなぐ USB ケーブル（機材側の端子の形で変わる）
+  const hub=needHub(p,f);
+  if(hub){need.push('給電付きUSB-Cハブ（充電しながらUSB機材をつなぐ）');cost[0]+=2000;cost[1]+=4000;cx+=1;missing++;}
+  if(p.r==='usbif'){
+    const u=A.rx?(A.rx.usb||'unk'):'unk';
+    const uL=(u==='usbb'?'USB-B':u==='micro'?'micro-USB':u==='usbc'?'USB-C':'機材側の端子');
+    if(u==='incl') need.push('付属の専用ケーブル（スマホの端子に合うもの）');
+    else if(f.device==='ipl') need.push('USBケーブル（USB-A–'+uL+'。付属品で足りることが多い）');
+    else if(hub) need.push('USBケーブル（USB-A–'+uL+'。付属品で足りることが多い）');
+    else if(u==='usbc') need.push('USB-C–USB-Cケーブル');
+    else if(u==='usbb'||u==='micro'){need.push('USB-C–'+USBK[u]+'ケーブル、またはUSB-C変換アダプタ（付属ケーブルはUSB-A用）');cost[0]+=800;cost[1]+=1500;}
+    else need.push('スマホと機材をつなぐUSBケーブル（機材側の端子に合わせる）');
+  }
+  if(f.device==='and'){notes.push('Androidでの動作は未確認です。'+(rx.stereo?'USB接続で、アプリが外部USB入力を使えるか確認してください。':'USB-C 3.5mm（CTIA配列）でマイク入力に対応した製品を選んでください。'));cx+=1;}
+  const why=fits(p,f)?[]:['x'];
+  const level = rx.level==='bad'?'bad':((out&&out.level==='maniac')||rx.level==='maniac')?'maniac':'basic';
+  const verified=VERIFIED.has(p.id);
+  // 読者向けの案内（このページ単独で読める言い方にする）
+  const LT='OBSの出力先を分けるプラグイン External Audio Output';
+  let article={t:'応用の構成です。',link:LINKS.article,lt:LT};
+  if(level==='maniac') article={t:'上級者向けの構成です。',link:LINKS.article,lt:LT};
+  if(p.bgm==='none') article={t:'PCを使わない構成です。'};
+  const ex=n=>({t:'基本の構成です。',link:LINKS.article,lt:LT});
+  if(p.o==='analog'&&p.path==='pc'&&p.m==='usbmic'&&p.r==='adp_chg') article=ex(1);
+  if(p.o==='analog'&&p.path==='pc'&&p.m==='usbmic'&&p.r==='usbif') article=ex(2);
+  if(p.o==='analog'&&p.path==='direct'&&p.r==='usbif') article=ex(3);
+  if(p.o==='analog'&&p.path==='pc'&&p.m==='xlr2'&&p.r==='usbif') article=ex(4);
+  const allOwn = DEVS.length>0 && missing===0 && level!=='bad';
+  const usbRx=(p.r==='usbif'||p.r==='otgif'||p.r==='usbmicd');
+  const chargeV=(usbRx&&(hub||(f.device==='ipl'&&!inclCable)))?'yes':rx.charge; // ハブ／給電付きカメラアダプタがあれば充電できる
+  return {need,notes,bad:A.bad,cost,cx,why,level,verified,article,stereo:rx.stereo,charge:chargeV,missing,allOwn,A};
+}
+const yen=c=>c[0]===0&&c[1]===0?'追加費用ほぼ0':'約'+c[0].toLocaleString()+'〜'+c[1].toLocaleString()+'円';
+const cxLabel=x=>x<=1?'シンプル':x<=3?'ふつう':'複雑';
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+// ---------- 用語の吹き出し ----------
+const GLOSS={
+  'ライン入力':'PCや音楽プレーヤーの音を入れる端子。「AUX」「LINE IN」と書かれ、3.5mmか赤白のRCA。マイク入力しか無い機材にはPCの音を入れられません。',
+  'USBミキサー':'USBでスマホにつなぐミキサーやオーディオIF（AG03、iRig Stream、AMS-22など）をまとめた呼び方。',
+  'オーディオIF':'オーディオインターフェイス。マイクの音をPCに入れる機材。XLR入力の数を ×1、×2 で示します。',
+  'PCとスマホ同時USB接続可':'USB端子が2つあり、PCとスマホに同時につなげること（Topping E2x2 OTG など）。スマホにつなぐだけの機材（AG03など）は「スマホにUSB接続可」です。',
+  '同時接続IF':'PCとスマホ同時USB接続可のオーディオIF。USB端子が2つあります。',
+  'スマホにUSB接続可':'USBでスマホにつないで使えること。製品ページでは「OTG対応」「iOS対応」と書かれることが多いです（AG03、iRig Stream、AMS-22など）。',
+  'IF':'オーディオインターフェイス。マイクの音をPCに入れる機材。',
+  'USB DAC':'USBサウンドアダプタ。PCに出力端子を1つ増やします。数百〜2千円。',
+  'USB-B':'四角いUSB端子。初代AG03／AG06はこの形。USB-Cのスマホにつなぐには変換ケーブルかアダプタが要ります。',
+  'micro-USB':'小さい台形のUSB端子。USB-Cのスマホにつなぐには対応ケーブルか変換アダプタが要ります。',
+  'XLR':'業務用マイクの3ピン端子。XLRマイクにはオーディオIFが要ります。',
+  'ファンタム電源':'コンデンサマイクを動かすためにIFから送る電源（+48V）。',
+  'TRRS':'4極の3.5mmプラグ。スマホのマイク入力兼イヤホン端子に使います。',
+  'TRS':'6.3mm（または3.5mm）の3極プラグ。IFの出力端子に多い形です。',
+  'RCA':'赤白のピン端子。AG03などのAUX入力に使われます。',
+  'AUXケーブル':'両端が3.5mmステレオミニのケーブル。',
+  'ダイレクトモニター':'IFに入ったマイクの音を、PCを通さずIFの出力へ混ぜる機能。',
+  'ループバック':'PCの再生音をIFの入力へ戻す機能。スマホへ送る目的では不要です。',
+  'カメラアダプタ':'Apple「Lightning–USB 3カメラアダプタ」。Lightning機でUSB機材を使うときに必要です（給電端子付き）。',
+  '変換アダプタ':'スマホのマイク入力（3.5mm）と充電端子を1つにした配信用アダプタ。モノラルになります。',
+  '純正変換＋分岐':'Apple純正のUSB-C／Lightning–3.5mm変換に、TRRS分岐ケーブルを足す方法。充電できません。',
+  'バスパワー':'USBケーブルからの給電だけで動くこと。',
+  'パススルー':'機材を通してスマホを充電できること。',
+  '詳細音声プロパティ':'OBSの音声ミキサーの歯車から開く画面。ソースごとにトラック1〜6のオン/オフを決めます。',
+  'CTIA':'スマホ用4極プラグの配列規格。多くのスマホ・アダプタがこの配列です。',
+  '確認済み':'このページの作者の実機、またはWeb・SNSで動作報告のある構成。',
+  '未確認':'動作の報告を見つけていない構成。',
+  'マニアック':'手持ち機材の流用など、落とし穴が多く上級者向けの構成。',
+  '手持ちで可':'登録した機材だけで組める構成（ケーブル類は除く）。',
+  'ステレオ':'左右2chのまま送る。BGMの広がりや2chマイクの定位が残ります。',
+  'モノラル':'左右を1つにまとめて送る。声とBGMを乗せるだけなら十分です。'
+};
+const TERMS=Object.keys(GLOSS).sort((a,b)=>b.length-a.length);
+const TRE=new RegExp(TERMS.map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'),'g');
+function mark(s){
+  s=String(s);let out='',last=0;const seen=new Set();
+  s.replace(TRE,(m,i)=>{out+=esc(s.slice(last,i));
+    if(seen.has(m)) out+=esc(m); else {seen.add(m);out+='<span class="t" tabindex="0" data-tip="'+esc(GLOSS[m])+'">'+esc(m)+'</span>';}
+    last=i+m.length;return m;});
+  return out+esc(s.slice(last));
+}
+const badge=(icon,text,cls)=>'<span class="badge '+(cls||'')+'">'+(icon?'<svg><use href="#i-'+icon+'"/></svg>':'')+mark(text)+'</span>';
+
+// ---------- 描画 ----------
+const F=document.getElementById('filters'),L=document.getElementById('list');
+const open=new Set();
+// ---------- 条件（ボタン式。選択肢ごとに説明と残り件数を付ける） ----------
+const ANY='どれでもいい';
+const FILTERS=[
+  {name:'mic',g:'mic',label:'マイク',tip:'USBマイクはPCに直接つなぎます。XLRマイクにはオーディオIFが必要で、本数ぶんのXLR入力が要ります。',opts:[
+    {v:'usbmic',l:'USBマイク',tip:'PCにUSBで直接つなぐマイク。IFは不要。'},
+    {v:'xlr1',l:'XLRマイク ×1',tip:'XLR端子のマイク1本。オーディオIF（XLR入力1以上）が必要。'},
+    {v:'xlr2',l:'XLRマイク ×2',tip:'XLRマイク2本、または左右2chで録るマイク（バイノーラルなど）。XLR入力2つのIFが必要。'},
+    {v:'other',l:'その他',tip:'3.5mmプラグのマイク、PC内蔵マイク、ワイヤレスマイクの受信機。'}]},
+  {name:'path',g:'mic',label:'マイクの声はOBSに入れる？',tip:'XLRマイクでPCの音も送るときだけ選べます。',opts:[
+    {v:'pc',l:'入れる',tip:'OBSで声とBGMを混ぜてから送るふつうの形。'},
+    {v:'direct',l:'入れない（スマホ側の機材へ直接）',tip:'マイクをスマホ側のUSBミキサーに直接挿し、PCからはBGMだけ送る。機材にXLR入力が本数ぶん必要。'}]},
+  {name:'bgm',g:'pc',label:'PCの音（BGMなど）を入れる？',tip:'PCで鳴らすBGMや効果音を配信に乗せるかどうか。',opts:[
+    {v:'pc',l:'入れる（PC＋OBSを使う）',tip:'PCの音をOBSでまとめてスマホへ送る。'},
+    {v:'none',l:'入れない（PCを使わない）',tip:'PCを使わず、マイクだけをスマホに入れる。BGMは配信アプリやスマホ側で用意。'}]},
+  {name:'pcout',g:'pc',label:'PCのどこから音を出す',tip:'OBSの出力先に選ぶデバイス。迷ったら「どれでもいい」のままで。',opts:[
+    {v:'analog',l:'ヘッドホン端子',tip:'PC本体の3.5mmヘッドホン端子。いちばんふつう。'},
+    {v:'usbdac',l:'USB DAC（追加）',tip:'USBサウンドアダプタで出力端子を増やす（数百〜2千円）。'},
+    {v:'ifout',l:'IFの出力端子',tip:'PC側オーディオIFのライン出力を使う（USBマイクなら、そのマイクのヘッドホン端子）。ダイレクトモニターでマイクが二重になりやすく上級者向け。'},
+    {v:'hdmi',l:'モニター（HDMI）',tip:'HDMIでつないだモニターのヘッドホン端子を使う。ヘッドホン端子が無いPCの代わりの方法。'},
+    {v:'otg',l:'IFへUSBで戻す',tip:'アナログを使わず、PCとスマホ同時USB接続のIFへUSBで戻す。'}]},
+  {name:'device',g:'phone',label:'配信するスマホ',tip:'端子の形で使える機材とケーブルが変わります。',opts:[
+    {v:'ipc',l:'iPhone（USB-C）',tip:'iPhone 15以降。'},
+    {v:'ipl',l:'iPhone（Lightning）',tip:'iPhone 14以前。USB機材には給電付きカメラアダプタが必要。'},
+    {v:'and',l:'Android',tip:'動作は未確認。'}]},
+  {name:'rx',g:'phone',label:'スマホに音を入れる機材',tip:'PCの音やマイクをスマホに入れる機材。',opts:[
+    {v:'adp_chg',l:'変換アダプタ（充電可）',tip:'3.5mmマイク入力＋充電端子付きの配信用アダプタ。安い。モノラル。'},
+    {v:'adp_split',l:'純正変換＋分岐',tip:'Apple純正の3.5mm変換＋TRRS分岐ケーブル。最安だが充電不可。モノラル。'},
+    {v:'usbif',l:'USBミキサー',tip:'AG03などUSBでスマホにつなぐミキサー／IF。ステレオ。ライン入力が必要。'},
+    {v:'otgif',l:'PCとスマホ同時USB接続のIF',tip:'USB端子が2つあり、PCとスマホに同時につなげるIF（E2x2 OTGなど）。AUXケーブル不要。'}]},
+  {name:'charge',g:'phone',label:'配信中にスマホを充電',tip:'長時間配信なら「したい」。',opts:[
+    {v:'yes',l:'したい',tip:'USB機材を使う場合は給電付きハブ（Lightningはカメラアダプタ）が加わります。'},
+    {v:'no',l:'しなくてよい',tip:'短時間の配信や、バッテリーに余裕がある場合。'}]},
+  {name:'stereo',g:'phone',label:'ステレオで送る必要',tip:'声とBGMを乗せるだけならモノラルで足ります。',opts:[
+    {v:'no',l:'なし（モノラルでよい）',tip:'変換アダプタでも足りる。'},
+    {v:'yes',l:'あり',tip:'左右の広がりや2chマイクの定位を残す。USB接続の機材が必要。'}]}
+];
+const SEL={};FILTERS.forEach(x=>SEL[x.name]='any');
+function buildFilters(){
+  for(const x of FILTERS){
+    const box=F.querySelector('.gg[data-g='+x.g+']');
+    const d=document.createElement('div');d.className='f';d.id='f-'+x.name;
+    d.innerHTML='<span class="fl">'+esc(x.label)+'<button type="button" class="q" data-tip="'+esc(x.tip)+'">?</button></span>'+
+      '<div class="opts" role="group">'+[{v:'any',l:ANY,tip:'この条件では絞り込まない。'},...x.opts].map(o=>'<button type="button" class="opt" data-f="'+x.name+'" data-v="'+o.v+'" data-tip="'+esc(o.tip)+'" aria-pressed="'+(o.v==='any')+'">'+esc(o.l)+'<span class="n"></span></button>').join('')+'</div><div class="ohint"></div>';
+    box.appendChild(d);
+  }
+  F.querySelectorAll('.f .fl').forEach(el=>{[...el.childNodes].forEach(n=>{if(n.nodeType!==3||!n.textContent.trim())return;const s=document.createElement('span');s.innerHTML=mark(n.textContent);n.replaceWith(s);});});
+}
+F.addEventListener('click',e=>{
+  const b=e.target.closest('.opt');if(!b||b.disabled)return;
+  SEL[b.dataset.f]=b.dataset.v;render();writeHash();saveState();
+});
+document.getElementById('reset').addEventListener('click',()=>{FILTERS.forEach(x=>SEL[x.name]='any');render();writeHash();saveState();});
+function readF(){return Object.assign({},SEL);}
+// 選択肢ごとに「それを選んだら何件残るか」を付け、0件は選べなくする。選んだ選択肢の説明を下に出す
+function facets(f){
+  for(const x of FILTERS){
+    const box=document.getElementById('f-'+x.name);
+    for(const b of box.querySelectorAll('.opt')){
+      const v=b.dataset.v;b.setAttribute('aria-pressed',String(SEL[x.name]===v));
+      if(v==='any'){b.disabled=false;b.querySelector('.n').textContent='';continue;}
+      if(x.name==='device'){b.querySelector('.n').textContent='';continue;}
+      const n=P.filter(p=>fits(p,effective(Object.assign({},f,{[x.name]:v})))).length;
+      b.querySelector('.n').textContent='('+n+')';b.disabled=n===0&&SEL[x.name]!==v;
+    }
+    const cur=x.opts.find(o=>o.v===SEL[x.name]);
+    box.querySelector('.ohint').textContent=cur?cur.tip:'';
+  }
+}
+function render(){
+  // PC を使わないなら「声は OBS に入れる？」と「PC のどこから音を出す」は無関係。XLR 以外は「声は OBS に入れる？」も無関係
+  const noPc=SEL.bgm==='none';
+  const showPath=!noPc&&(SEL.mic==='any'||MIC[SEL.mic].direct);
+  document.getElementById('f-path').hidden=!showPath; if(!showPath) SEL.path='any';
+  document.getElementById('f-pcout').hidden=noPc; if(noPc) SEL.pcout='any';
+  const f=readF(),sort=document.getElementById('sort').value;
+  facets(f);
+  let rows=P.map(p=>({p,e:evaluate(p,f)}));
+  const total=rows.length;
+  rows=rows.filter(r=>r.e.why.length===0);
+  const lv=r=>({basic:0,maniac:1,bad:2})[r.e.level];
+  const key={
+    simple:r=>[lv(r),r.e.cx,r.e.cost[0]],
+    own:r=>[!r.e.allOwn,r.e.bad.length>0,r.e.missing,r.e.cost[0],lv(r),r.e.cx],
+    cost:r=>[r.e.level==='bad',r.e.cost[0],lv(r),r.e.cx],
+    verified:r=>[!r.e.verified,lv(r),r.e.cx],
+    stereo:r=>[!r.e.stereo,lv(r),r.e.cx],
+    id:r=>[r.p.id]
+  }[sort];
+  rows.sort((a,b)=>{const ka=key(a),kb=key(b);for(let i=0;i<ka.length;i++){if(ka[i]!==kb[i])return ka[i]<kb[i]?-1:1;}return a.p.id-b.p.id;});
+  const ownN=rows.filter(r=>r.e.allOwn).length;
+  document.getElementById('count').textContent='条件に合う構成 '+rows.length+'件（全'+total+'件）'+(DEVS.length?'　手持ちで可 '+ownN+'件':'')+(DEV[f.device]?'　'+DEV[f.device]:'');
+  if(!rows.length){L.innerHTML='<p class="none">条件に合う構成がありません。「どれでもいい」を増やしてみてください。</p>';return;}
+  L.innerHTML=rows.map(({p,e})=>{
+    const badges=[
+      e.allOwn?'<span class="badge own"><svg><use href="#i-check"/></svg>'+mark('手持ちで可')+'</span>':'',
+      e.verified?badge(null,'確認済み','ok'):'',
+      e.level==='bad'?badge(null,'おすすめしない','ng'):(e.level==='maniac'?badge(null,'マニアック','warn'):''),
+      badge(e.stereo?'st':'mono',e.stereo?'ステレオ':'モノラル'),
+      badge('bat','充電'+(e.charge==='yes'?'○':e.charge==='no'?'×':'機種次第')),
+      badge('gear',cxLabel(e.cx)),
+      badge('yen',yen(e.cost))
+    ].join('');
+    return '<details class="row '+e.level+'" data-id="'+p.id+'"'+(open.has(p.id)?' open':'')+'><summary><div class="top"><span class="no">#'+p.id+'</span>'+badges+'</div>'+chainHTML(p,e.A,f)+'</summary>'+
+      '<div class="body"><div class="flow">'+mark(chainText(p,e.A,f))+'</div>'+
+      '<h4>必要なもの</h4><ul>'+e.need.map(n=>'<li>'+mark(n)+'</li>').join('')+e.bad.map(n=>'<li class="ng">'+mark(n)+'</li>').join('')+'</ul>'+
+      (e.notes.length?'<details class="notes"><summary>気をつける点（'+e.notes.length+'）</summary><ul>'+e.notes.map(n=>'<li>'+mark(n)+'</li>').join('')+'</ul></details>':'')+
+      '<p class="meta">'+mark(e.article.t)+(e.article.link?' <a href="'+esc(e.article.link)+'" target="_blank" rel="noopener">'+esc(e.article.lt)+'</a>':'')+'　／　'+mark(e.verified?'確認済み':'未確認')+'　／　共通の注意は下のTips</p></div></details>';
+  }).join('');
+}
+F.addEventListener('change',e=>{if(e.target.closest('#devs'))return;render();});
+document.getElementById('sort').addEventListener('change',()=>{render();saveState();});
+L.addEventListener('toggle',ev=>{const d=ev.target;if(!d.classList||!d.classList.contains('row'))return;const i=+d.dataset.id;if(d.open)open.add(i);else open.delete(i);writeHash();saveState();},true);
+// ---------- 吹き出し ----------
+const tt=document.getElementById('tt');let ttEl=null;
+function showTip(el){
+  const txt=el.dataset.tip;if(!txt)return;
+  tt.textContent=txt;tt.style.display='block';
+  const r=el.getBoundingClientRect(),w=tt.offsetWidth,vw=document.documentElement.clientWidth;
+  let x=r.left+window.scrollX;const maxX=window.scrollX+vw-w-8;if(x>maxX)x=Math.max(8,maxX);
+  tt.style.left=x+'px';tt.style.top=(r.bottom+window.scrollY+7)+'px';
+  tt.style.setProperty('--ax',Math.max(10,Math.min(w-16,r.left+window.scrollX-x+Math.min(r.width/2,14)))+'px');
+  ttEl=el;
+}
+function hideTip(){tt.style.display='none';ttEl=null;}
+const canHover=window.matchMedia&&window.matchMedia('(hover: hover)').matches;
+if(canHover){
+  // 選択肢ボタン（.opt）はホバー／フォーカスで説明を出す（クリックは選択に使う）
+  document.addEventListener('mouseover',e=>{const el=e.target.closest&&e.target.closest('.t,.q,.opt');if(el&&el!==ttEl)showTip(el);});
+  document.addEventListener('mouseout',e=>{const el=e.target.closest&&e.target.closest('.t,.q,.opt');if(el&&!(e.relatedTarget&&el.contains(e.relatedTarget)))hideTip();});
+}
+document.addEventListener('focusin',e=>{const el=e.target.closest&&e.target.closest('.t,.q,.opt');if(el)showTip(el);});
+document.addEventListener('focusout',e=>{const el=e.target.closest&&e.target.closest('.t,.q,.opt');if(el)hideTip();});
+document.addEventListener('click',e=>{
+  const el=e.target.closest&&e.target.closest('.t,.q');
+  if(el){e.preventDefault();e.stopPropagation();if(ttEl===el&&!canHover)hideTip();else showTip(el);return;}
+  hideTip();
+},true);
+window.addEventListener('scroll',()=>{if(ttEl&&!canHover)hideTip();},{passive:true});
+// URL の #mic=usbmic&bgm=pc&open=111 のように条件と開く行を指定できる（記事からのリンク用）。選ぶと # も更新する
+function readHash(){
+  const h=location.hash.replace(/^#/,''); if(!h) return;
+  const q=new URLSearchParams(h);
+  for(const x of FILTERS){ const v=q.get(x.name); if(v && (v==='any'||x.opts.some(o=>o.v===v))) SEL[x.name]=v; }
+  const o=q.get('open'); if(o) o.split(',').forEach(n=>{ if(/^\d+$/.test(n)) open.add(+n); });
+}
+function writeHash(){
+  const q=new URLSearchParams(); for(const x of FILTERS){ if(SEL[x.name]!=='any') q.set(x.name,SEL[x.name]); }
+  if(open.size) q.set('open',[...open].join(','));
+  const h=q.toString(); history.replaceState(null,'',h?'#'+h:location.pathname+location.search);
+}
+// 選んだ条件・並べ替え・開いた行・持っている機材を、このブラウザ（localStorage）に保存し、次に開いたとき戻す。
+// URL に # があるときは、条件と開く行は # を優先する（記事からのリンクが保存した条件に隠れないように）。保存できない環境（プライベートブラウズなど）では今までどおり動く
+const STORE_KEY='cfgfinder.v1';
+function saveState(){
+  try{localStorage.setItem(STORE_KEY,JSON.stringify({devs:DEVS,sel:SEL,sort:document.getElementById('sort').value,open:[...open]}));}catch(e){}
+}
+function loadState(){
+  let s=null; try{s=JSON.parse(localStorage.getItem(STORE_KEY)||'null');}catch(e){}
+  if(!s||typeof s!=='object') return;
+  if(Array.isArray(s.devs)) DEVS=s.devs.filter(d=>d&&typeof d==='object'&&DTYPES[d.type]).map(d=>({name:String(d.name||'').slice(0,100),type:d.type,xlr:[0,1,2].includes(d.xlr|0)?d.xlr|0:0,line:!!d.line,phone:!!d.phone,dual:!!d.dual,usb:USBK[d.usb]?d.usb:'unk'}));
+  const so=document.getElementById('sort'); if(typeof s.sort==='string'&&[...so.options].some(o=>o.value===s.sort)) so.value=s.sort;
+  if(s.sel&&typeof s.sel==='object') for(const x of FILTERS){ const v=s.sel[x.name]; if(v&&(v==='any'||x.opts.some(o=>o.v===v))) SEL[x.name]=v; }
+  if(Array.isArray(s.open)) s.open.forEach(n=>{ if(Number.isInteger(n)) open.add(n); });
+}
+loadState();
+if(location.hash.length>1){ FILTERS.forEach(x=>SEL[x.name]='any'); open.clear(); readHash(); }
+buildFilters();renderDevs();render();writeHash();saveState();
+// ページを開いたまま # 付きのリンクを踏んだときも条件を読み直す（writeHash は replaceState なので hashchange は起きない）
+window.addEventListener('hashchange',()=>{ if(location.hash.length<=1) return; FILTERS.forEach(x=>SEL[x.name]='any'); open.clear(); readHash(); render(); saveState(); });
+})();
+</script>
+</body>
+</html>
